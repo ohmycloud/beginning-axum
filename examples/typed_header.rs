@@ -1,7 +1,7 @@
 use axum::{
     Json, Router,
     body::Body,
-    extract::Path,
+    extract::{Path, State},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::get,
@@ -20,14 +20,15 @@ async fn response() -> Response {
         .unwrap()
 }
 
-async fn hello(Path(num): Path<i32>) -> impl IntoResponse {
+async fn hello(State(mut data): State<Vec<u8>>, Path(num): Path<i32>) -> impl IntoResponse {
+    data[0] += 1;
     match num {
         0 => (
             TypedHeader(ContentType::json()),
-            TypedHeader(ContentLength(27)),
+            TypedHeader(ContentLength(37)),
             (
                 StatusCode::CREATED,
-                Json(json!({ "message": "Hello, World!".to_string() })),
+                Json(json!({ "message": format!("Hello, World! {data:?}") })),
             ),
         )
             .into_response(),
@@ -46,7 +47,8 @@ async fn hello(Path(num): Path<i32>) -> impl IntoResponse {
 
 #[tokio::main]
 async fn main() {
-    let app = Router::new().route("/{num}", get(hello));
+    let data = vec![0; 3];
+    let app = Router::new().route("/{num}", get(hello)).with_state(data);
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
