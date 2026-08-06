@@ -1,17 +1,26 @@
-use axum::{Json, Router, extract::Path, http::StatusCode, routing::get};
+use axum::{
+    Json, Router,
+    body::Body,
+    extract::Path,
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    routing::get,
+};
 use axum_extra::{
     TypedHeader,
     headers::{ContentLength, ContentType},
 };
-use serde_json::{Value, json};
+use serde_json::json;
 
-async fn hello(
-    Path(num): Path<i32>,
-) -> (
-    TypedHeader<ContentType>,
-    TypedHeader<ContentLength>,
-    (StatusCode, Json<Value>),
-) {
+async fn response() -> Response {
+    Response::builder()
+        .status(StatusCode::NOT_FOUND)
+        .header("x-foo", "custom header")
+        .body(Body::from("not found"))
+        .unwrap()
+}
+
+async fn hello(Path(num): Path<i32>) -> Response {
     match num {
         0 => (
             TypedHeader(ContentType::json()),
@@ -20,7 +29,9 @@ async fn hello(
                 StatusCode::CREATED,
                 Json(json!({ "message": "Hello, World!".to_string() })),
             ),
-        ),
+        )
+            .into_response(),
+        1 => response().await,
         _ => (
             TypedHeader(ContentType::json()),
             TypedHeader(ContentLength(35)),
@@ -28,7 +39,8 @@ async fn hello(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "message": "Error during creation".to_string() })),
             ),
-        ),
+        )
+            .into_response(),
     }
 }
 
