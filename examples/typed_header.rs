@@ -20,7 +20,7 @@ async fn response() -> Response {
         .unwrap()
 }
 
-async fn hello(Path(num): Path<i32>) -> Response {
+async fn hello(Path(num): Path<i32>) -> impl IntoResponse {
     match num {
         0 => (
             TypedHeader(ContentType::json()),
