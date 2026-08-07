@@ -1,5 +1,5 @@
 use axum::{
-    Json, Router,
+    Extension, Json, Router,
     body::Body,
     extract::{Path, State},
     http::StatusCode,
@@ -12,6 +12,16 @@ use axum_extra::{
 };
 use serde_json::json;
 use std::sync::{Arc, Mutex};
+
+#[derive(Debug, Clone)]
+struct AppState {}
+
+async fn handler(Extension(state): Extension<AppState>) -> impl IntoResponse {
+    (
+        StatusCode::OK,
+        Json(json!({ "message": format!("hello {state:?}") })),
+    )
+}
 
 async fn response() -> Response {
     Response::builder()
@@ -51,8 +61,13 @@ async fn hello(Path(num): Path<i32>, State(data): State<Arc<Mutex<Vec<u8>>>>) ->
 
 #[tokio::main]
 async fn main() {
+    let state = AppState {};
     let data = Arc::new(Mutex::new(vec![0; 3]));
-    let app = Router::new().route("/{num}", get(hello)).with_state(data);
+    let app = Router::new()
+        .route("/{num}", get(hello))
+        .with_state(data)
+        .route("/", get(handler))
+        .layer(Extension(state));
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
         .await
