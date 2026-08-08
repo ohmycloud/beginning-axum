@@ -1,3 +1,5 @@
+use crate::api::users::get_users;
+use crate::db::init_db;
 use axum::Router;
 use axum::http::header::{CONTENT_TYPE, HeaderMap, USER_AGENT};
 use axum::routing::get;
@@ -7,12 +9,10 @@ use axum_extra::{
 };
 use sea_orm::DatabaseConnection;
 
-use crate::api::get_user;
-use crate::db::init_db;
-
 mod api;
 mod db;
 mod entities;
+mod utils;
 
 async fn hello(headers: HeaderMap) -> String {
     let user_agent = headers
@@ -43,7 +43,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(hello))
         .route("/greet", get(greet))
-        .route("/users", get(get_user))
+        .route("/users", get(get_users))
         .with_state(conn);
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")

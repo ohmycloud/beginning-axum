@@ -1,29 +1,44 @@
-use axum::Json;
-use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, QueryFilter};
+use axum::{Json, http::StatusCode};
+use sea_orm::{
+    ColumnTrait, Condition, DatabaseConnection, EntityTrait, Order, QueryFilter, QueryOrder,
+};
 use std::collections::HashMap;
 
-use crate::entities::users;
+use crate::{entities::users, utils::app_error::AppError};
 use axum::extract::{Query, State};
 
-pub async fn get_user(
+pub async fn get_users(
     State(conn): State<DatabaseConnection>,
     Query(params): Query<HashMap<String, String>>,
-) -> Json<Vec<users::Model>> {
+) -> Result<Json<Vec<users::Model>>, AppError> {
     let mut condition = Condition::all();
 
     if let Some(id) = params.get("id") {
-        condition = condition.add(users::Column::Id.eq(id.parse::<i32>().unwrap()));
+        match id.parse::<i32>() {
+            Ok(parsed_id) => condition = condition.add(users::Column::Id.eq(parsed_id)),
+            Err(_) => {
+                return Err(AppError::new(
+                    StatusCode::BAD_REQUEST,
+                    "ID must be an integer",
+                ));
+            }
+        }
     }
 
     if let Some(username) = params.get("username") {
         condition = condition.add(users::Column::Username.contains(username));
     }
 
-    let users = users::Entity::find()
+    match users::Entity::find()
         .filter(condition)
+        .order_by(users::Column::Username, Order::Asc)
         .all(&conn)
         .await
-        .unwrap();
-
-    Json(users)
+    {
+        Ok(users) => Ok(Json(users)),
+        Err(_) => Err(AppError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Database error",
+        )),
+    }
 }
